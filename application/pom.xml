@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.fiap.bank</groupId>
+        <artifactId>fiap-bank-atm</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>application</artifactId>
+    <packaging>jar</packaging>
+    <name>fiap-bank-atm :: application</name>
+    <description>Camada de Aplicacao: casos de uso, orquestracao e contratos de transferencia (DTOs em Java Records).</description>
+
+    <!--
+      BLINDAGEM ARQUITETURAL:
+      A aplicacao orquestra o dominio, portanto depende APENAS de 'domain'.
+      NAO conhece infrastructure (JDBC/SQLite) nem presentation (Swing).
+      A inversao de dependencia e feita via a interface AccountRepository.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>com.fiap.bank</groupId>
+            <artifactId>domain</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+        </dependency>
+    </dependencies>
+</project>
