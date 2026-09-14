@@ -1,13 +1,19 @@
 package com.fiap.bank.atm.presentation;
 
 import com.formdev.flatlaf.FlatDarkLaf;
+// ---------------------------------------------------------------------
+// BLINDAGEM ARQUITETURAL (Regra inviolavel nº 2)
+// A tela enxerga UNICAMENTE a camada 'application': servico, DTOs (Java
+// Records) e contratos de falha. Nao ha - e o compilador nao permitiria -
+// qualquer import de 'domain' ou 'infrastructure' neste arquivo.
+// ---------------------------------------------------------------------
 import com.fiap.bank.atm.application.service.AtmService;
-import com.fiap.bank.atm.domain.exception.AccountBlockedException;
-import com.fiap.bank.atm.domain.exception.DailyLimitExceededException;
-import com.fiap.bank.atm.domain.exception.InsufficientFundsException;
-import com.fiap.bank.atm.domain.exception.InvalidPinException;
-import com.fiap.bank.atm.domain.model.Account;
-import com.fiap.bank.atm.domain.model.Transaction;
+import com.fiap.bank.atm.application.dto.AccountInfoDTO;
+import com.fiap.bank.atm.application.dto.TransactionDTO;
+import com.fiap.bank.atm.application.exception.AccountBlockedException;
+import com.fiap.bank.atm.application.exception.DailyLimitExceededException;
+import com.fiap.bank.atm.application.exception.InsufficientFundsException;
+import com.fiap.bank.atm.application.exception.InvalidPinException;
 
 import javax.swing.*;
 import javax.swing.border.LineBorder;
@@ -18,6 +24,7 @@ import java.awt.event.KeyEvent;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 public class AtmFrame extends javax.swing.JFrame {
 
@@ -502,34 +509,33 @@ public class AtmFrame extends javax.swing.JFrame {
     }
 
     private void showVirtualReceipt() {
-        Account acc = atmService.getCurrentAccount();
-        if (acc == null)
+        // Tratamento ativo de presença: sem sessão aberta, nada é impresso.
+        Optional<AccountInfoDTO> currentAccount = atmService.findCurrentAccount();
+        if (currentAccount.isEmpty())
             return;
+
+        AccountInfoDTO acc = currentAccount.get();
 
         StringBuilder sb = new StringBuilder();
         sb.append("========================================\n");
         sb.append("               FIAP BANK                \n");
         sb.append("        COMPROVANTE DE EXTRATO          \n");
         sb.append("========================================\n");
-        sb.append("CONTA: ").append(acc.getAccountNumber()).append("\n");
+        sb.append("CONTA: ").append(acc.accountNumber()).append("\n");
         sb.append("DATA: ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")))
                 .append("\n");
         sb.append("----------------------------------------\n");
 
-        List<Transaction> txs = acc.getTransactions();
-        int count = 0;
-        // Pega as últimas 5 transações
-        for (int i = txs.size() - 1; i >= 0 && count < 5; i--) {
-            Transaction tx = txs.get(i);
-            sb.append(String.format("%-12s %-14s %12s\n",
-                    tx.getTimestamp().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")),
-                    tx.getType().getDescription(),
-                    tx.getAmount().format()));
-            count++;
-        }
+        // As últimas 5 transações já chegam prontas da camada de aplicação,
+        // ordenadas e convertidas em DTO via Streams API.
+        List<TransactionDTO> txs = atmService.getReceiptStatement();
+        txs.forEach(tx -> sb.append(String.format("%-12s %-14s %12s\n",
+                tx.createdAt().format(DateTimeFormatter.ofPattern("dd/MM HH:mm")),
+                tx.typeDescription(),
+                tx.formattedAmount())));
 
         sb.append("----------------------------------------\n");
-        sb.append("SALDO ATUAL: ").append(acc.getBalance().format()).append("\n");
+        sb.append("SALDO ATUAL: ").append(acc.formattedBalance()).append("\n");
         sb.append("========================================\n");
         sb.append("        OBRIGADO POR UTILIZAR           \n");
         sb.append("             FIAP BANK                  \n");
@@ -611,9 +617,11 @@ public class AtmFrame extends javax.swing.JFrame {
                 break;
 
             case MAIN_MENU:
-                Account currentAcc = atmService.getCurrentAccount();
+                String contaAtiva = atmService.findCurrentAccount()
+                        .map(AccountInfoDTO::accountNumber)
+                        .orElse("");
                 lblScreenHeader.setText("--- MENU PRINCIPAL ---");
-                lblScreenStatus.setText("CONTA ATIVA: " + (currentAcc != null ? currentAcc.getAccountNumber() : ""));
+                lblScreenStatus.setText("CONTA ATIVA: " + contaAtiva);
                 lblScreenInput.setText("SELECIONE A OPERAÇÃO");
 
                 lblLeftOpt1.setText("> SACAR");
@@ -675,15 +683,15 @@ public class AtmFrame extends javax.swing.JFrame {
                 break;
 
             case SHOW_BALANCE:
-                Account balanceAcc = atmService.getCurrentAccount();
+                Optional<AccountInfoDTO> balanceAcc = atmService.findCurrentAccount();
                 lblScreenHeader.setText("--- CONSULTA DE SALDO ---");
                 lblScreenStatus.setText("SALDO DISPONÍVEL");
-                lblScreenInput.setText(balanceAcc != null ? balanceAcc.getBalance().format() : "R$ 0,00");
-                lblScreenMessage.setText("Limite Diário Restante: " +
-                        (balanceAcc != null
-                                ? balanceAcc.getDailyWithdrawalLimit().minus(balanceAcc.getTotalWithdrawnToday())
-                                        .format()
-                                : "R$ 0,00"));
+                lblScreenInput.setText(balanceAcc
+                        .map(AccountInfoDTO::formattedBalance)
+                        .orElse("R$ 0,00"));
+                lblScreenMessage.setText("Limite Diário Restante: " + balanceAcc
+                        .map(AccountInfoDTO::formattedRemainingDailyLimit)
+                        .orElse("R$ 0,00"));
                 lblRightOpt3.setText("VOLTAR <");
                 btnBlank.setText("");
                 break;
