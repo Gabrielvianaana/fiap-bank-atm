@@ -1,18 +1,28 @@
 package com.fiap.bank.atm.domain.model;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.util.Locale;
 import java.util.Objects;
 
+/**
+ * Value Object imutavel para valores monetarios.
+ *
+ * <p>
+ * Encapsula {@link BigDecimal} com escala fixa de 2 casas, eliminando os erros
+ * de arredondamento tipicos de {@code double} em operacoes financeiras.
+ * </p>
+ */
 public final class Money {
     private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
+    private static final int SCALE = 2;
     public static final Money ZERO = new Money(BigDecimal.ZERO);
 
     private final BigDecimal amount;
 
     private Money(BigDecimal amount) {
-        this.amount = amount.setScale(2);
+        this.amount = amount.setScale(SCALE, RoundingMode.HALF_UP);
     }
 
     public static Money of(double amount) {
