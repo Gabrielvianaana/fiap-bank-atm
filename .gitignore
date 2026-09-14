@@ -1,1 +1,23 @@
-target/**
+# Artefatos de build do Maven
+target/
+*/target/
+
+# Banco de dados SQLite gerado em tempo de execucao
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Arquivos de IDE
+.idea/
+*.iml
+.vscode/
+nbproject/private/
+nb-configuration.xml
+.settings/
+.classpath
+.project
+
+# Sistema operacional
+.DS_Store
+Thumbs.db

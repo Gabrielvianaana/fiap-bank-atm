@@ -1,217 +1,308 @@
-# FIAP Bank - Emulador de Caixa Eletrônico (ATM)
+# FIAP Bank ATM — Refatoração DDD (Checkpoint 4)
 
-![Java 21](https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=java)
-![Maven](https://img.shields.io/badge/Maven-3.x-blue?style=for-the-badge&logo=apache-maven)
-![FlatLaf](https://img.shields.io/badge/UI-FlatLaf_Dark-darkgreen?style=for-the-badge)
-![Architecture](https://img.shields.io/badge/Architecture-Domain--Driven_Design_(DDD)-purple?style=for-the-badge)
+![Java 21](https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=openjdk)
+![Maven Multi-Module](https://img.shields.io/badge/Maven-Multi--Módulo-blue?style=for-the-badge&logo=apachemaven)
+![JDBC](https://img.shields.io/badge/Persistência-JDBC_Puro-green?style=for-the-badge)
+![SQLite](https://img.shields.io/badge/Banco-SQLite_3.45-003B57?style=for-the-badge&logo=sqlite)
+![DDD](https://img.shields.io/badge/Arquitetura-Domain--Driven_Design-purple?style=for-the-badge)
 
-> **FIAP - Engenharia de Software (2026)**  
-> **Checkpoint 4 (CP4)** — Aplicação de Emulação de Caixa Eletrônico (ATM) construída em **Java 21**, **Swing (FlatLaf)** e orientada aos princípios de **Domain-Driven Design (DDD)**.
-
----
-
-## 📌 Visão Geral
-
-O **FIAP Bank ATM** é um emulador interativo de Caixa Eletrônico de alta fidelidade visual e comportamental. Desenvolvido para simular a experiência real de operação de um terminal bancário autoatendimento, o sistema oferece desde a validação de segurança de cartões/PIN até a dispensação simulada de cédulas e impressão de extrato térmico em popup.
-
-A aplicação foi projetada com arquitetura limpa em camadas baseada em **DDD (Domain-Driven Design)**, garantindo desacoplamento entre regras de negócio, persistência de dados e a camada de apresentação visual.
+> **FIAP — Engenharia de Software (2026)**
+> **Disciplina:** Domain Driven Design — Java · **Turma:** 2ESPG
+> **Professor:** Eduardo dos Santos Ramos
+> **Checkpoint 4:** Refactoring do Emulador FIAP Bank ATM
 
 ---
 
-## 🎯 Principais Funcionalidades
+## 👥 Integrantes do Grupo
 
-- **🔐 Autenticação Segura & Gestão de PIN**:
-  - Leitura e validação de conta bancária e senha numérica de 4 dígitos.
-  - Bloqueio automático de segurança da conta após **3 tentativas incorretas consecutivas**.
-  - Reset de tentativas falhas ao autenticar com sucesso.
-- **💵 Saque Eletrônico (Withdrawal)**:
-  - Valores rápidos pré-definidos via botões físicos laterais (R\$ 20, R\$ 50, R\$ 100, R\$ 200, R\$ 500) e opção de valor personalizado.
-  - Validação estrita de saldo disponível (`InsufficientFundsException`).
-  - Controle e validação de **limite diário de saque** (`DailyLimitExceededException`).
-  - Animação visual no compartimento de notas (efeito luminoso verde e alerta de retirada de cédulas).
-- **📥 Depósito em Dinheiro (Deposit)**:
-  - Entrada de valores numéricos via teclado.
-  - Validação de valor mínimo positivo.
-  - Animação visual de processamento de depósitos e envelopes.
-- **💸 Transferência entre Contas (Transfer)**:
-  - Transferência em tempo real para qualquer outra conta existente no sistema.
-  - Validação da existência da conta de destino e verificação de conta bloqueada.
-  - Proibição de transferências para a própria conta de origem.
-  - Lançamento automático de movimentação de saída (`TRANSFER_OUT`) e entrada (`TRANSFER_IN`).
-- **📊 Consulta de Saldo e Limite Diário**:
-  - Exibição de saldo em moeda nacional formatada (`R$ X.XXX,XX`).
-  - Exibição em tempo real do limite diário de saque restante.
-- **🧾 Impressão de Extrato Térmico Virtual**:
-  - Simulação de impressora lateral com aviso luminoso.
-  - Emissão de extrato em janela pop-up estilizada como papel térmico (fonte monospaced), contendo as últimas transações e botão de destacar comprovante.
-- **⌨️ Dupla Forma de Interação (Teclado Físico + Botões Virtuais)**:
-  - Interface com botões laterais (L1, L2, L3 e R1, R2, R3) e teclado numérico virtual.
-  - Suporte completo ao **teclado do computador** via interceptação global de eventos (`0-9`, `Enter` para confirmar, `Backspace` / `Esc` para apagar ou cancelar).
-- **💡 Indicadores de Periféricos & LED Animated States**:
-  - LED indicador de leitor de cartão piscando no estado de boas-vindas.
-  - Slots de dispensador de dinheiro e impressora com feedback de cor e estado.
+| RM | Nome Completo | GitHub |
+| :--- | :--- | :--- |
+| **564382** | Gabriel Viana de Souza | [@Gabrielvianaana](https://github.com/Gabrielvianaana) |
+| **561714** | Rafael Falaguasta Ferraz | — |
+
+**Repositório (fork do projeto base):** `https://github.com/Gabrielvianaana/fiap-bank-atm`
+**Repositório original:** https://github.com/prof-eduardo-ramos/fiap-bank-atm
 
 ---
 
-## 🏗️ Arquitetura do Sistema (DDD)
+## 🎯 O que foi entregue
 
-A aplicação segue uma divisão clara de responsabilidades estruturada nos padrões do **Domain-Driven Design (DDD)**:
+O emulador legado operava como um **monólito**: todas as classes no mesmo escopo de compilação, a tela Swing acessando diretamente as entidades de domínio, persistência volátil em `HashMap` (perdida a cada reinício), retornos `null` espalhados e laços `for` imperativos.
 
-```
-com.fiap.bank.atm
-├── domain                          # Camada de Domínio (Regras de Negócio Puras)
-│   ├── exception                   # Exceções de negócio customizadas
-│   │   ├── AccountBlockedException.java
-│   │   ├── DailyLimitExceededException.java
-│   │   ├── InsufficientFundsException.java
-│   │   └── InvalidPinException.java
-│   ├── model                       # Entidades e Objetos de Valor (Value Objects)
-│   │   ├── Account.java            # Entidade Principal da Conta Bancária
-│   │   ├── BaseEntity.java         # Classe base com ID (UUID) e datas de criação/atualização
-│   │   ├── Money.java              # Value Object imutável para operações monetárias (BigDecimal)
-│   │   ├── Transaction.java        # Entidade de Registro de Transações
-│   │   └── TransactionType.java    # Enum dos tipos de transação (Saque, Depósito, Transferências)
-│   └── repository                  # Interfaces de Repositório
-│       └── AccountRepository.java
-│
-├── application                     # Camada de Aplicação (Casos de Uso & Orquestração)
-│   └── service
-│       └── AtmService.java         # Orquestra autenticação, transações e estado da sessão
-│
-├── infrastructure                  # Camada de Infraestrutura (Persistência e Recursos Externos)
-│   └── persistence
-│       └── InMemoryAccountRepository.java # Implementação em memória com dados de teste (Seed)
-│
-└── presentation                    # Camada de Apresentação (UI / Swing)
-    ├── AtmFrame.java               # Janela principal do ATM com FlatLaf Dark Theme
-    ├── AtmFrame.form               # Arquivo de layout visual do Swing Form
-    └── ScreenState.java            # Enum da Máquina de Estados da Tela
-```
+Esta entrega substitui **exclusivamente o motor da aplicação**, mantendo o *frontend* Swing visualmente e funcionalmente intacto. O usuário final não percebe nenhuma mudança estética — apenas o funcionamento da nova infraestrutura por trás da tela.
 
----
-
-## ⚙️ Detalhamento dos Componentes de Domínio
-
-### 1. `Money` (Value Object)
-- Classe imutável responsável por manipular valores monetários garantindo precisão decimal com `BigDecimal` (escala 2).
-- Evita erros de arredondamento de ponto flutuante (`double`).
-- Formatação automática no padrão brasileiro `pt-BR` (ex: `R$ 5.000,00`).
-- Métodos utilitários de comparação (`isGreaterThan`, `isLessThan`, `isGreaterThanOrEqual`) e aritmética (`plus`, `minus`).
-
-### 2. `Account` (Aggregate Root / Entity)
-- Contém o número da conta, PIN criptografado/armazenado, saldo (`Money`), limite diário de saque, total sacado no dia, status de bloqueio, contador de falhas de autenticação e histórico de transações.
-- Encapsula todas as regras de negócio de saque, depósito, transferência e autenticação.
-
-### 3. `AtmService` (Application Service)
-- Atua como a fachada da camada de aplicação.
-- Gerencia o estado da conta atualmente autenticada (`currentAccount`).
-- Garante a execução transacional salvando alterações no `AccountRepository`.
-
-### 4. `ScreenState` & `AtmFrame` (Máquina de Estados de Tela)
-A interface gráfica opera sobre uma **Máquina de Estados Finitos (FSM)** representada pelo enum `ScreenState`:
-
-| Estado (`ScreenState`) | Descrição |
+| Problema apontado na auditoria | Solução aplicada |
 | :--- | :--- |
-| `WELCOME` | Tela inicial aguardando a digitação do número da conta. LED do cartão pisca verde. |
-| `ENTER_PIN` | Solicitação da senha de 4 dígitos (exibida com asteriscos `****`). |
-| `MAIN_MENU` | Menu principal com opções operacionais associadas aos botões laterais. |
-| `WITHDRAW_SELECT` | Seleção de valores pré-definidos de saque (R\$ 20 a R\$ 500) ou valor customizado. |
-| `WITHDRAW_CUSTOM` | Campo para digitação de valor específico de saque. |
-| `DEPOSIT_INPUT` | Campo para digitação de valor de depósito em dinheiro. |
-| `TRANSFER_ACCOUNT` | Entrada do número da conta de destino para transferência. |
-| `TRANSFER_VALUE` | Entrada do valor da transferência. |
-| `SHOW_BALANCE` | Exibição do saldo disponível e limite diário restante. |
-| `SHOW_STATEMENT` | Disparo da impressão do extrato. |
-| `ANIMATION_*` | Estados temporários de animação (dispensador de cédulas, impressora e depósito). |
-| `SUCCESS` / `ERROR` | Mensagens de confirmação de sucesso ou erros tratados do sistema. |
+| Falta de segregação física entre camadas | 4 submódulos Maven independentes, blindados em tempo de compilação |
+| Apresentação acessando o domínio | DTOs em **Java Records**; o POM do `presentation` não enxerga `domain` nem `infrastructure` |
+| Persistência volátil em memória RAM | Banco relacional **SQLite** via **JDBC puro**, sem ORM |
+| Retornos nulos e código imperativo | `Optional<T>` em todas as buscas + **Streams API** nas iterações |
+| Risco de SQL Injection | `PreparedStatement` com injeção de parâmetros via métodos `set` |
 
 ---
 
-## 🔑 Contas Pré-cadastradas para Teste (Seed Data)
+## 🏗️ Arquitetura em Quatro Módulos Físicos
 
-Ao iniciar a aplicação, as seguintes contas de teste são carregadas automaticamente em memória pelo `InMemoryAccountRepository`:
+```
+fiap-bank-atm/                  ← POM AGREGADOR (packaging: pom)
+│
+├── domain/                     ← Núcleo soberano de negócio
+│   └── com.fiap.bank.atm.domain
+│       ├── model/              BaseEntity, Account, Transaction, Money,
+│       │                       TransactionType, AccountStatus
+│       ├── repository/         ATMRepository<T extends BaseEntity>, AccountRepository
+│       └── exception/          AccountBlocked, InvalidPin, InsufficientFunds, DailyLimitExceeded
+│
+├── application/                ← Casos de uso e contratos de transferência
+│   └── com.fiap.bank.atm.application
+│       ├── dto/                AccountInfoDTO, TransactionDTO, OperationResultDTO  (Java Records)
+│       ├── service/            AtmService
+│       ├── mapper/             AtmMapper
+│       └── exception/          Contratos de falha publicados para a tela
+│
+├── infrastructure/             ← Adapters técnicos + Composition Root
+│   └── com.fiap.bank.atm
+│       ├── AtmApplication      (método main — montagem das camadas)
+│       └── infrastructure.persistence/
+│           ├── ConnectionFactory           Fábrica de conexões JDBC
+│           ├── DatabaseInitializer         Executa o DDL e a carga inicial
+│           ├── AccountRepositoryJdbcImpl   Implementação concreta com PreparedStatement
+│           └── DataAccessException
+│       └── resources/db/       schema.sql, data.sql
+│
+└── presentation/               ← Interface gráfica Java Swing (INTOCADA)
+    └── com.fiap.bank.atm.presentation
+        ├── AtmFrame.java / AtmFrame.form
+        └── ScreenState.java
+```
 
-| Número da Conta | PIN (Senha) | Saldo Inicial | Limite Diário Saque | Histórico Inicial |
-| :---: | :---: | :---: | :---: | :--- |
-| **`12345`** | `1234` | **R\$ 5.000,00** | R\$ 1.500,00 | Depósito R\$ 2.000, Transf. Recebida R\$ 500, Saque R\$ 100 |
-| **`67890`** | `5678` | **R\$ 1.200,00** | R\$ 1.000,00 | Depósito R\$ 1.500, Transf. Enviada R\$ 500 |
-| **`99999`** | `9999` | **R\$ 50,00** | R\$ 500,00 | Depósito R\$ 50,00 (Abertura de conta) |
+### Grafo de dependências (blindagem em tempo de compilação)
+
+```
+presentation ──────► application ──────► domain
+                                            ▲
+infrastructure ─────────────────────────────┘
+      │ (Composition Root)
+      └──► application, presentation
+```
+
+**A regra crítica:** o `pom.xml` de `presentation` declara **uma única** dependência de módulo — `application`. Não existe, e o compilador não permitiria, qualquer referência a `domain` ou `infrastructure` a partir do Swing.
+
+> **Por que o `main` mora em `infrastructure`?**
+> A regra inviolável nº 2 proíbe o POM da apresentação de apontar para `infrastructure`. Como o *wiring* das camadas precisa conhecer a implementação concreta do repositório, ele foi colocado no módulo mais externo do sistema. Assim a tela permanece 100% cega a JDBC, SQLite e qualquer detalhe de persistência.
 
 ---
 
-## 🛠️ Tecnologias e Bibliotecas Utilizadas
+## ✅ Conformidade com as Regras Invioláveis
 
-- **Java 21**: Linguagem principal de programação (LTS).
-- **Swing (Java GUI)**: Framework nativo de interface gráfica.
-- **FlatLaf 3.5.1 (`com.formdev:flatlaf`)**: Look & Feel moderno e escuro para interfaces Swing.
-- **JUnit 5 (5.10.2)**: Framework de testes unitários.
-- **Apache Maven**: Gerenciamento de dependências e build.
+### 1. Frontend Intocável (Java Swing)
+Nenhuma tela, botão, cor, animação ou transição de estado foi alterada. As **únicas** mudanças em `AtmFrame.java` são os pontos de contato com o motor:
+
+| Antes (domínio exposto) | Depois (contrato de aplicação) |
+| :--- | :--- |
+| `import ...domain.model.Account` | `import ...application.dto.AccountInfoDTO` |
+| `import ...domain.model.Transaction` | `import ...application.dto.TransactionDTO` |
+| `import ...domain.exception.*` | `import ...application.exception.*` |
+| `acc.getAccountNumber()` | `acc.accountNumber()` |
+| `acc.getBalance().format()` | `acc.formattedBalance()` |
+| `for (int i = txs.size()-1; ...)` | `atmService.getReceiptStatement()` + `forEach` |
+
+O arquivo `AtmFrame.form` e todo o método de construção de layout permanecem byte a byte iguais ao original.
+
+### 2. Isolamento Físico Estrito (Apache Maven)
+Quatro submódulos obrigatórios criados, classes migradas fisicamente para os respectivos `src/main/java` e dependências editadas com rigor. Verificação prática: compilar `presentation` com um classpath contendo **apenas** `application` funciona — prova de que nenhuma classe de domínio é alcançável.
+
+### 3. Proteção contra SQL Injection
+Zero concatenação de Strings para montagem de SQL. Todos os comandos são constantes com marcadores `?`, alimentados exclusivamente por `setString`, `setBigDecimal` e `setInt`. A classe `Statement` básica aparece apenas em dois pontos sem dado de usuário: o `PRAGMA foreign_keys` e a execução do script DDL de criação de tabelas.
+
+### 4. Proibição de ORMs
+Nenhum Hibernate, JPA ou Spring Data. As únicas dependências externas do projeto são `org.xerial:sqlite-jdbc` (driver oficial) e `com.formdev:flatlaf` (Look & Feel, já presente no original).
+
+### 5. Uso Defensivo e Erradicação do Null
+A interface `ATMRepository<T extends BaseEntity>` obriga `Optional<T>` em toda busca. A camada orquestradora trata a ausência ativamente com `orElseThrow`, `map` e `flatMap` — nunca com comparações contra `null`. Até a sessão ativa do terminal é um `Optional<Account>`, não um campo anulável.
+
+### 6. Versionamento e Colaboração
+Histórico de commits distribuído entre os integrantes no repositório do fork.
 
 ---
 
-## 🚀 Como Executar o Projeto
+## 🔑 Peças-Chave da Refatoração
+
+### Repositório Genérico com Limite Superior
+
+```java
+public interface ATMRepository<T extends BaseEntity> {
+    Optional<T> buscarPorId(UUID id);
+    void salvar(T entidade);
+    void remover(UUID id);
+    List<T> buscarTodos();
+}
+
+public interface AccountRepository extends ATMRepository<Account> {
+    Optional<Account> findByAccountNumber(String accountNumber);
+}
+```
+
+### Contratos de Transferência em Java Records
+
+```java
+public record AccountInfoDTO(
+        UUID id, String agency, String accountNumber,
+        BigDecimal balance, String formattedBalance,
+        BigDecimal dailyWithdrawalLimit, BigDecimal totalWithdrawnToday,
+        BigDecimal remainingDailyLimit, String formattedRemainingDailyLimit,
+        String status, Boolean blocked, Integer failedAttempts) { }
+```
+
+Apenas `UUID`, `BigDecimal`, `String` e wrappers (`Boolean`, `Integer`) atravessam a fronteira. Nenhum `Account`, `Money` ou `Transaction` escapa do domínio.
+
+### Consulta Parametrizada com PreparedStatement e ResultSet
+
+```java
+private static final String SELECT_BY_NUMBER = SELECT_ACCOUNT_COLUMNS + " WHERE number = ?";
+
+try (Connection connection = connectionFactory.getConnection();
+     PreparedStatement statement = connection.prepareStatement(SELECT_BY_NUMBER)) {
+
+    statement.setString(1, accountNumber);      // sanitização garantida
+
+    try (ResultSet resultSet = statement.executeQuery()) {
+        if (!resultSet.next()) {
+            return Optional.empty();            // ausência ≠ null
+        }
+        Account account = mapAccount(resultSet);
+        loadTransactions(account);
+        return Optional.of(account);
+    }
+}
+```
+
+### Streams API no lugar dos laços imperativos
+
+```java
+// Extrato: ordenação + corte, sem índices manuais
+public List<Transaction> getLatestTransactions(int limit) {
+    return transactions.stream()
+            .sorted(Comparator.comparing(Transaction::getTimestamp).reversed())
+            .limit(Math.max(limit, 0))
+            .toList();
+}
+
+// Somatório por tipo, sem acumulador em laço
+public Money sumByType(TransactionType type) {
+    return transactions.stream()
+            .filter(transaction -> transaction.getType() == type)
+            .map(Transaction::getAmount)
+            .reduce(Money.ZERO, Money::plus);
+}
+```
+
+---
+
+## 🗄️ Modelo de Dados
+
+Baseado no dicionário do **Anexo 7.2**. As colunas marcadas como *extensão* foram acrescentadas ao final de cada tabela — todas com `DEFAULT` — para persistir o estado de negócio que o emulador já mantinha em memória. Sem elas, o frontend intocado deixaria de funcionar. A carga do Anexo 7.2 roda sem qualquer alteração.
+
+### `tb_account`
+
+| Coluna | Tipo | Origem |
+| :--- | :--- | :--- |
+| `id` | VARCHAR(36) PK | Anexo 7.2 |
+| `agency` | VARCHAR(10) NOT NULL | Anexo 7.2 |
+| `number` | VARCHAR(20) NOT NULL | Anexo 7.2 |
+| `balance` | DECIMAL(15,2) NOT NULL | Anexo 7.2 |
+| `status` | VARCHAR(20) NOT NULL | Anexo 7.2 |
+| `pin` | VARCHAR(4) DEFAULT '0000' | extensão |
+| `daily_withdrawal_limit` | DECIMAL(15,2) DEFAULT 1000.00 | extensão |
+| `total_withdrawn_today` | DECIMAL(15,2) DEFAULT 0.00 | extensão |
+| `last_withdrawal_date` | VARCHAR(10) | extensão |
+| `failed_attempts` | INTEGER DEFAULT 0 | extensão |
+| `created_at` / `updated_at` | TIMESTAMP | extensão (auditoria) |
+
+### `tb_transaction`
+
+| Coluna | Tipo | Origem |
+| :--- | :--- | :--- |
+| `id` | VARCHAR(36) PK | Anexo 7.2 |
+| `account_id` | VARCHAR(36) FK → `tb_account(id)` | Anexo 7.2 |
+| `type` | VARCHAR(20) NOT NULL | Anexo 7.2 |
+| `amount` | DECIMAL(15,2) NOT NULL | Anexo 7.2 |
+| `created_at` | TIMESTAMP NOT NULL | Anexo 7.2 |
+| `description` | VARCHAR(120) DEFAULT '' | extensão (histórico do extrato) |
+
+Os scripts `schema.sql` e `data.sql` (em `infrastructure/src/main/resources/db/`) são **idempotentes** (`CREATE TABLE IF NOT EXISTS` / `ON CONFLICT DO NOTHING`), então reiniciar a aplicação preserva integralmente os dados já gravados.
+
+---
+
+## 🔑 Contas para Teste
+
+Contas operacionais do terminal — as mesmas credenciais do emulador original, agora gravadas no banco relacional:
+
+| Conta | PIN | Saldo Inicial | Limite Diário |
+| :---: | :---: | :---: | :---: |
+| `12345` | `1234` | R$ 5.000,00 | R$ 1.500,00 |
+| `67890` | `5678` | R$ 1.200,00 | R$ 1.000,00 |
+| `99999` | `9999` | R$ 50,00 | R$ 500,00 |
+
+A carga também inclui as três contas literais do Anexo 7.2 (`12345-6`, `98765-4`, `11111-1`), utilizadas como referência do dicionário de dados.
+
+> Após o primeiro uso, os saldos passam a refletir as operações realizadas — a persistência é real e sobrevive ao reinício. Para voltar ao estado inicial, apague o arquivo `fiap-bank-atm.db` da raiz do projeto.
+
+---
+
+## 🚀 Como Executar
 
 ### Pré-requisitos
-- **JDK 21** ou superior instalado e configurado nas variáveis de ambiente (`JAVA_HOME`).
-- **Apache Maven 3.8+** instalado (ou via integração da IDE NetBeans / IntelliJ / Eclipse / VS Code).
+- **JDK 21** ou superior (`JAVA_HOME` configurado)
+- **Apache Maven 3.8+**
 
----
+### Linha de comando
 
-### Opção 1: Linha de Comando (Terminal / Prompt)
+```bash
+# 1) Compila e instala os quatro módulos no repositório local
+mvn clean install
 
-1. Clone o repositório ou navegue até a pasta raiz do projeto:
-   ```bash
-   cd fiap-bank-atm
-   ```
-
-2. Compile e execute a aplicação via Maven:
-   ```bash
-   mvn clean compile exec:java
-   ```
-
----
-
-### Opção 2: Executar via Script Batch (Windows)
-
-No Windows, você pode executar diretamente o script configurado `run.bat`:
-```cmd
-run.bat
+# 2) Executa a aplicação a partir do Composition Root
+mvn -pl infrastructure exec:java
 ```
-*O script localiza automaticamente o Maven do Apache NetBeans ou o `mvn` global e inicializa a aplicação.*
 
----
+### Scripts prontos
 
-### Opção 3: Apache NetBeans / IntelliJ IDEA / Eclipse
+```bash
+./run.sh      # macOS / Linux
+```
+```cmd
+run.bat       :: Windows (localiza o Maven do NetBeans ou o global)
+```
 
-1. Abra a IDE e selecione **Open Project** apontando para a pasta raiz do projeto (onde se encontra o `pom.xml`).
-2. Aguarde a sincronização das dependências Maven (`flatlaf`, `junit-jupiter`).
-3. Localize e execute a classe principal:  
-   [AtmApplication.java](file:///Users/eduardo.ramos/workspace/fiap/engenharia-de-software/2026/fiap-bank-atm/CP4/fiap-bank-atm/src/main/java/com/fiap/bank/atm/AtmApplication.java) (`com.fiap.bank.atm.AtmApplication`).
+### IDE (NetBeans / IntelliJ / Eclipse / VS Code)
 
----
+1. Abra o projeto pelo `pom.xml` **da raiz** — a IDE reconhece os quatro submódulos automaticamente.
+2. Rode `mvn clean install` uma vez para publicar os módulos no repositório local.
+3. Execute a classe `com.fiap.bank.atm.AtmApplication` (módulo `infrastructure`).
 
-## 🧪 Rodando os Testes
+### Testes
 
-Para executar a suíte de testes unitários com o Maven Surefire Plugin:
 ```bash
 mvn test
 ```
 
----
-
-## 🎨 Destaques de Design e Usabilidade
-
-- **Tema Escuro de Alta Performance (Slate & Neon)**: Tela em estilo monitor bancário CRT/LCD moderno com texto ciano/amarelo para facilitar a leitura.
-- **Teclado Numérico & Teclas de Atalho**:
-  - Tecla `1` a `0`: Digitação de valores e PIN.
-  - Tecla `Confirmar` / `Enter`: Submete a ação atual.
-  - Tecla `C` (Vermelha) / `Backspace` / `Esc`: Limpa a digitação ou cancela/volta de tela.
-- **Janela de Extrato Destacável**:
-  - Ao solicitar o extrato no menu principal, um diálogo em formato de **comprovante impresso térmico** é aberto ao lado do terminal com as movimentações recentes e saldo atualizado.
+O módulo `domain` traz uma suíte JUnit 5 cobrindo saque, depósito, transferência, bloqueio por tentativas, limite diário, somatórios com Streams e o contrato `Optional`.
 
 ---
 
-## 📝 Licença e Créditos
+## 📦 Dependências
 
-Desenvolvido para fins acadêmicos como parte do curso de **Engenharia de Software (2026)** da **FIAP**.  
-Prof. Eduardo Ramos.
+| Biblioteca | Versão | Módulo | Finalidade |
+| :--- | :--- | :--- | :--- |
+| `org.xerial:sqlite-jdbc` | 3.45.1.0 | `infrastructure` | Driver JDBC oficial do SQLite (Anexo 7.1) |
+| `com.formdev:flatlaf` | 3.5.1 | `presentation` | Look & Feel escuro da UI Swing |
+| `org.junit.jupiter` | 5.10.2 | testes | Suíte de testes unitários |
+
+O módulo `domain` não possui **nenhuma** dependência externa — apenas a API nativa do JDK 21.
+
+---
+
+## 📝 Créditos
+
+Trabalho acadêmico desenvolvido para a disciplina de **Domain Driven Design — Java**, curso de **Engenharia de Software** da **FIAP** (2026), turma **2ESPG**, sob orientação do **Prof. Eduardo dos Santos Ramos**.
