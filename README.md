@@ -18,7 +18,7 @@
 | RM | Nome Completo | GitHub |
 | :--- | :--- | :--- |
 | **564382** | Gabriel Viana de Souza | [@Gabrielvianaana](https://github.com/Gabrielvianaana) |
-| **561714** | Rafael Falaguasta Ferraz | [@Rafael Falaguasta]-(https://github.com/Rafael-Falaguasta) |
+| **561714** | Rafael Falaguasta Ferraz | [@Rafael Falaguasta](https://github.com/Rafael-Falaguasta) |
 
 **Repositório (fork do projeto base):** `https://github.com/Gabrielvianaana/fiap-bank-atm`
 **Repositório original:** https://github.com/prof-eduardo-ramos/fiap-bank-atm
